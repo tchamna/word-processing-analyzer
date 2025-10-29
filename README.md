@@ -54,11 +54,16 @@ The script will generate:
 - `formatting_issues_{language}.txt` (or custom output file): Plain text summary of issues
 - `formatting_issues_{language}.csv` (or custom CSV file): CSV report with columns: Line, Issue Type, Sentence, Suggested Fix
 
-## Requirements
+## Deployment
 
-- Python 3.6+
-- python-docx library
-- streamlit library (for the web app)
+### Local Development
+```bash
+pip install -r requirements.txt
+streamlit run app.py
+```
+
+### Azure Deployment
+See [AZURE_DEPLOYMENT.md](AZURE_DEPLOYMENT.md) for detailed instructions on deploying to Azure App Service.
 
 ## License
 

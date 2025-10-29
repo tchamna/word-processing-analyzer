@@ -5,6 +5,15 @@ import re
 import io
 import csv
 
+st.set_page_config(
+    page_title="Word Format Issue Detector",
+    page_icon="📝",
+    layout="wide"
+)
+
+st.title("Word Format Issue Detector")
+st.write("Upload a .docx file to check for formatting issues including colored text, capitalization, punctuation, and spacing.")
+
 # Punctuations that should end a sentence.
 PUNCTUATION = ".?!;"
 # Punctuations that should not have a space before them.
