@@ -13,8 +13,8 @@ DEFAULT_FILE = r"G:\My Drive\Mbú'ŋwɑ̀'nì\Livres Nufi\Nufi_test_processing.d
 
 language_name = os.path.basename(DEFAULT_FILE).split('_')[0]  # Extract language name from filename 
 
-DEFAULT_OUTPUT = f"formatting_issues_{language_name}.txt"
-DEFAULT_CSV = f"formatting_issues_{language_name}.csv"
+DEFAULT_OUTPUT = f"{language_name}_formatting_issues.txt"
+DEFAULT_CSV = f"{language_name}_formatting_issues_.csv"
 # ==========================================
 
 # Punctuations that should end a sentence.
@@ -93,6 +93,12 @@ def main():
     filepath = args.filepath
     output_txt = args.output or DEFAULT_OUTPUT
     output_csv = args.csv or DEFAULT_CSV
+
+    # Create Result folder if it doesn't exist
+    result_dir = "Result"
+    os.makedirs(result_dir, exist_ok=True)
+    output_txt = os.path.join(result_dir, output_txt)
+    output_csv = os.path.join(result_dir, output_csv)
 
     print(f"\n📘 Using settings:")
     print(f"  File:   {filepath}")
