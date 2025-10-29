@@ -4,7 +4,7 @@ A Python script to analyze .docx files for formatting issues, including extracti
 
 ## Features
 
-- Detects paragraphs with colored text (e.g., red, green, as specified by the user)
+- Detects paragraphs with any colored text
 - Checks for missing capitalization
 - Checks for missing punctuation
 - Outputs results in both text and CSV formats
@@ -37,7 +37,6 @@ Examples:
 
 - Use all defaults: `python word_processing.py`
 - Specify a different .docx file: `python word_processing.py path/to/your/file.docx`
-- Check for green text instead: `python word_processing.py --color green`
 - Custom output files: `python word_processing.py --output my_issues.txt --csv my_report.csv`
 
 The script will generate:
