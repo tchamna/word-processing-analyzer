@@ -26,3 +26,6 @@ Thumbs.db
 formatting_issues_*.txt
 formatting_issues_*.csv
 Result/
+*xlsx
+*.xls
+*.csv
