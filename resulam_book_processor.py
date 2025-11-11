@@ -23,6 +23,7 @@ from pathlib import Path
 from typing import List, Dict, Optional
 
 import pandas as pd
+import unicodedata
 
 
 
@@ -108,7 +109,13 @@ class BookDatabaseProcessor:
             self.books_df = pd.read_excel(self.books_path)
             # Sort by date, most recent first
             self.books_df = self.books_df.sort_values(by="publication_date", ascending=False)
-            self.languages = sorted(self.books_df["language_name"].unique())
+            # Sort languages alphabetically while ignoring diacritics so that
+            # names like 'Éwé' appear near 'Ewondo' rather than at the end.
+            raw_langs = [str(x) for x in self.books_df["language_name"].dropna().unique()]
+            def _strip_accents(s: str) -> str:
+                return unicodedata.normalize('NFKD', s).encode('ASCII', 'ignore').decode('ASCII')
+
+            self.languages = sorted(raw_langs, key=lambda s: _strip_accents(s).lower())
             print(f"Successfully loaded {len(self.books_df)} book records for {len(self.languages)} languages.")
         except FileNotFoundError:
             print(f"Error: The file was not found at '{self.books_path}'.")
@@ -297,8 +304,26 @@ class BookDatabaseProcessor:
         authors = row.get('authors', 'N/A')
         title = row.get('title', 'N/A')
 
-        pages = row.get('number_of_pages')
-        pages_str = f"({int(pages)} pages), " if pd.notna(pages) else ""
+        # Prefer pages from format-specific scraped columns if available
+        pages_candidates = ['pages_paperback', 'pages_hard_cover', 'pages_ebook', 'number_of_pages']
+        pages_val = None
+        for pc in pages_candidates:
+            if pc in row and pd.notna(row.get(pc)) and row.get(pc) != "":
+                pages_val = row.get(pc)
+                break
+
+        # Normalize pages to an integer string when possible
+        pages_str = ""
+        if pages_val is not None:
+            try:
+                # pages_val might be numeric or a string containing digits
+                pages_int = int(str(pages_val).strip())
+                pages_str = f"({pages_int} pages), "
+            except Exception:
+                # Fallback: try to extract leading digits
+                m = re.search(r"(\d+)", str(pages_val))
+                if m:
+                    pages_str = f"({int(m.group(1))} pages), "
 
         # Try common columns that might contain the paperback ISBN (or the scraped isbn_paperback)
         isbn_candidates = [

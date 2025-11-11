@@ -158,6 +158,52 @@ def get_asin_from_url(url: str) -> str:
         return ""
 
 
+def get_pages_from_url(url: str) -> str:
+    """
+    Scrape the product page and try to extract the number of pages (if present).
+
+    Returns the page count as a string (digits) or an empty string if not found.
+    """
+    if not isinstance(url, str) or not url.startswith('http'):
+        return ""
+
+    try:
+        response = requests.get(url, headers=HEADERS, timeout=10)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.content, 'html.parser')
+
+        # Search detail bullets for patterns like '72 pages' or 'Paperback: 72 pages'
+        detail_bullets = soup.find('div', {'id': 'detailBullets_feature_div'})
+        text_sources = []
+        if detail_bullets:
+            text_sources.append(detail_bullets.get_text(separator=' '))
+
+        # product details sections
+        prod_details = soup.find(id='productDetails_detailBullets_sections1')
+        if prod_details:
+            text_sources.append(prod_details.get_text(separator=' '))
+
+        # Also check the general page text as a last resort
+        text_sources.append(soup.get_text(separator=' '))
+
+        page_regex = re.compile(r"(\d{1,5})\s+pages", flags=re.IGNORECASE)
+        for txt in text_sources:
+            if not txt:
+                continue
+            m = page_regex.search(txt)
+            if m:
+                # return just the digits (no commas)
+                return m.group(1).replace(',', '')
+
+        return ""
+    except requests.exceptions.RequestException as e:
+        print(f"    - Could not fetch URL for pages {url}: {e}")
+        return ""
+    except Exception as e:
+        print(f"    - Unexpected error extracting pages from {url}: {e}")
+        return ""
+
+
 def clean_identifier(value: str) -> str:
     """
     Clean an identifier string (ISBN or ASIN) by removing
@@ -206,6 +252,10 @@ def process_isbns(df: pd.DataFrame) -> pd.DataFrame:
     df['isbn_paperback'] = ''
     df['isbn_ebook'] = ''
     df['isbn_hard_cover'] = ''
+    # Initialize pages columns
+    df['pages_paperback'] = ''
+    df['pages_ebook'] = ''
+    df['pages_hard_cover'] = ''
 
     total_rows = len(df)
     
@@ -237,6 +287,16 @@ def process_isbns(df: pd.DataFrame) -> pd.DataFrame:
                         if asin_clean:
                             df.at[index, target_col] = asin_clean
                             print(f"    - Found ASIN (used as ISBN_ebook): {asin_clean}")
+                # scrape pages for this URL and put in corresponding pages column
+                pages_col = f"pages_{source_col}"
+                try:
+                    pages = get_pages_from_url(url)
+                    pages_clean = clean_identifier(pages)
+                    if pages_clean:
+                        df.at[index, pages_col] = pages_clean
+                        print(f"    - Found pages ({pages_col}): {pages_clean}")
+                except Exception as e:
+                    print(f"    - Error extracting pages for {url}: {e}")
                 # Add a small delay to avoid overwhelming the server
                 time.sleep(1)
     
