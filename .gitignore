@@ -29,3 +29,6 @@ Result/
 *xlsx
 *.xls
 *.csv
+Book_Exports/
+twi_analysis_with_english.py
+analyze_twi.py

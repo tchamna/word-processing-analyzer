@@ -32,7 +32,6 @@ import numpy as np
 import docx2txt
 import xlsxwriter
 
-
 # =============================================================================
 # Configuration
 # =============================================================================
@@ -557,7 +556,7 @@ def main():
         proper_names.to_csv("data_ProperNames.csv", encoding="utf-8-sig", index=False)
         print(f"Found {len(proper_names)} entries with proper names")
 
-    print("\nâœ“ Processing complete!")
+    print("\nProcessing complete!")
 
 
 if __name__ == "__main__":
