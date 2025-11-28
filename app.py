@@ -4,6 +4,74 @@ from docx.shared import RGBColor
 import re
 import io
 import csv
+import zipfile
+import xml.etree.ElementTree as ET
+
+def load_document_ignoring_bad_media(docx_bytes: bytes) -> Document:
+    """Load a DOCX while gracefully skipping corrupted media.
+
+    Rebuilds the DOCX zip in-memory, excluding corrupted media entries
+    and cleaning up media references in relationship files.
+    """
+    src_bio = io.BytesIO(docx_bytes)
+    try:
+        with zipfile.ZipFile(src_bio, "r") as src_zip:
+            # First pass: identify which media files are corrupted or missing
+            corrupt_media = set()
+            for name in src_zip.namelist():
+                if name.startswith("word/media/"):
+                    try:
+                        # Test if we can read it
+                        src_zip.read(name)
+                    except Exception:
+                        # Mark as corrupt
+                        corrupt_media.add(name)
+            
+            # Second pass: rebuild ZIP without corrupt media and clean relationships
+            new_bio = io.BytesIO()
+            with zipfile.ZipFile(new_bio, "w", compression=zipfile.ZIP_DEFLATED) as dst_zip:
+                for name in src_zip.namelist():
+                    # Skip all media files (corrupt or not) to avoid issues
+                    if name.startswith("word/media/"):
+                        continue
+                    
+                    # For .rels files, clean up media references
+                    if name.endswith(".rels"):
+                        try:
+                            data = src_zip.read(name)
+                            # Parse and clean XML
+                            root = ET.fromstring(data)
+                            ns = {'rel': 'http://schemas.openxmlformats.org/package/2006/relationships'}
+                            
+                            # Remove relationships pointing to media
+                            for rel in root.findall('.//rel:Relationship', ns):
+                                target = rel.get('Target', '')
+                                if 'media/' in target:
+                                    root.remove(rel)
+                            
+                            # Write cleaned XML
+                            cleaned_data = ET.tostring(root, encoding='utf-8', xml_declaration=True)
+                            dst_zip.writestr(name, cleaned_data)
+                        except Exception:
+                            # If cleaning fails, write original
+                            try:
+                                data = src_zip.read(name)
+                                dst_zip.writestr(name, data)
+                            except Exception:
+                                continue
+                    else:
+                        # Copy other files as-is
+                        try:
+                            data = src_zip.read(name)
+                            dst_zip.writestr(name, data)
+                        except Exception:
+                            continue
+            
+            new_bio.seek(0)
+            return Document(new_bio)
+    except Exception:
+        # As a fallback, try loading the original; if it fails, let caller catch
+        return Document(io.BytesIO(docx_bytes))
 
 st.set_page_config(
     page_title="Word Format Issue Detector",
@@ -82,7 +150,13 @@ uploaded_file = st.file_uploader("Choose a .docx file", type=["docx"])
 
 if uploaded_file is not None:
     try:
-        doc = Document(io.BytesIO(uploaded_file.read()))
+        file_bytes = uploaded_file.read()
+        # Use robust loader that ignores corrupted media parts
+        with st.spinner("Loading document..."):
+            doc = load_document_ignoring_bad_media(file_bytes)
+        
+        st.info("ℹ️ Note: Images are not analyzed. Only text formatting is checked.")
+        
         all_issues = []
         for i, para in enumerate(doc.paragraphs):
             all_issues.extend(check_paragraph(i, para))
@@ -117,6 +191,8 @@ if uploaded_file is not None:
             )
         else:
             st.info("No formatting issues found in the document!")
+    except zipfile.BadZipFile as e:
+        st.error(f"The uploaded file is not a valid DOCX (bad ZIP): {e}")
     except Exception as e:
         st.error(f"Error processing the file: {e}")
 else:
