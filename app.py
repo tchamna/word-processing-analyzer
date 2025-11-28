@@ -74,13 +74,15 @@ def load_document_ignoring_bad_media(docx_bytes: bytes) -> Document:
         return Document(io.BytesIO(docx_bytes))
 
 st.set_page_config(
-    page_title="Word Format Issue Detector",
+    page_title="DOCX Formatting Analyzer",
     page_icon="📝",
     layout="wide"
 )
 
-st.title("Word Format Issue Detector")
-st.write("Upload a .docx file to check for formatting issues including colored text, capitalization, punctuation, and spacing.")
+st.title("📝 DOCX Formatting Analyzer")
+st.markdown("*Detect formatting issues in Word documents: colored text, capitalization, punctuation, and spacing.*")
+st.markdown("**By Resulam**")
+st.divider()
 
 # Punctuations that should end a sentence.
 PUNCTUATION = ".?!;"
@@ -105,6 +107,19 @@ def check_paragraph(i, para):
             "type": "Contains colored text",
             "sentence": text,
             "suggestion": f"Review colored text: '{colored_text}'"
+        })
+
+    # Underline check (detect any underlined text)
+    underlined_text = ""
+    for run in para.runs:
+        if run.font.underline:
+            underlined_text += run.text
+    if underlined_text:
+        issues.append({
+            "line": i + 1,
+            "type": "Contains underlined text",
+            "sentence": text,
+            "suggestion": f"Review underlined text: '{underlined_text}'"
         })
 
     # Capitalization check
@@ -142,9 +157,6 @@ def check_paragraph(i, para):
         })
 
     return issues
-
-st.title("Docx Formatting Analyzer")
-st.write("Upload a .docx file to check for formatting issues including colored text, capitalization, punctuation, and spacing.")
 
 uploaded_file = st.file_uploader("Choose a .docx file", type=["docx"])
 
